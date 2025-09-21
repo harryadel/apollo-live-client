@@ -2,8 +2,8 @@ import { ReactiveEvent, StoreObject, Event } from './defs';
 
 export function reduceStore(
   reactiveEvent: ReactiveEvent,
-  store: StoreObject[] | StoreObject
-) {
+  store: StoreObject[] | StoreObject | null
+): StoreObject[] | StoreObject | null {
   if (store instanceof Array) {
     return reduceStoreArray(reactiveEvent, store);
   }
@@ -12,10 +12,10 @@ export function reduceStore(
 
 export function reduceStoreObject(
   reactiveEvent: ReactiveEvent,
-  store: StoreObject
-) {
+  store: StoreObject | null
+): StoreObject | null {
   const { event, doc } = reactiveEvent;
-  const { __typename, ...rest } = doc;
+  const { ...rest } = doc;
 
   if (event === Event.ADDED) {
     // check if it exists
@@ -28,12 +28,15 @@ export function reduceStoreObject(
   }
 
   if (event === Event.CHANGED) {
-    return Object.assign({}, store || {}, rest);
+    return Object.assign({}, store || {}, rest, { __typename: doc.__typename });
   }
 
   if (event === Event.REMOVED) {
     return null;
   }
+
+  // This should never happen, but TypeScript requires it
+  return store;
 }
 
 export function reduceStoreArray(
@@ -52,7 +55,7 @@ export function reduceStoreArray(
     // check if it exists
     const { idx, found } = findIndexInStore(store, doc._id);
 
-    if (found) {
+    if (found && idx !== undefined) {
       return [...store.slice(0, idx), found, ...store.slice(idx + 1)];
     }
 
@@ -67,25 +70,29 @@ export function reduceStoreArray(
     }
 
     const newFound = Object.assign({}, found, doc);
-    return [...store.slice(0, idx), newFound, ...store.slice(idx + 1)];
+    return [...store.slice(0, idx!), newFound, ...store.slice(idx! + 1)];
   }
 
   if (event === Event.REMOVED) {
     return store.filter(item => item._id !== doc._id);
   }
+
+  // This should never happen, but TypeScript requires it
+  return store;
 }
 
 /**
  * @param store
  * @param _id
  */
-function findIndexInStore(store, _id) {
-  let foundIdx;
+function findIndexInStore(store: StoreObject[], _id: string | number): { idx: number | undefined; found: StoreObject | undefined } {
+  let foundIdx: number | undefined;
   const found = store.find((item, idx) => {
     if (item._id === _id) {
       foundIdx = idx;
       return true;
     }
+    return false;
   });
 
   return { idx: foundIdx, found };

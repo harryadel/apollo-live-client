@@ -1,6 +1,6 @@
 import { assert } from 'chai';
 import { reduceStore } from '../reduceStore';
-import { ReactiveEvent, StoreObject, Event } from '../defs';
+import { Event, StoreObject } from '../defs';
 
 describe('reduceStore', function() {
   it('Should run an update correctly', function() {
@@ -27,10 +27,12 @@ describe('reduceStore', function() {
       ]
     );
 
-    assert.lengthOf(newStore, 2);
-    assert.isObject(newStore[0]);
-    assert.isDefined(newStore[0].title);
-    assert.isDefined(newStore[0].newField);
+    assert.isArray(newStore);
+    const newStoreArray = newStore as StoreObject[];
+    assert.lengthOf(newStoreArray, 2);
+    assert.isObject(newStoreArray[0]);
+    assert.isDefined((newStoreArray[0] as Record<string, unknown>).title);
+    assert.isDefined((newStoreArray[0] as Record<string, unknown>).newField);
     // assert.equal('current', newStore[0].__typename);
   });
 });

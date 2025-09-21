@@ -12,12 +12,12 @@ export type ReactiveEvent = {
 export interface StoreObject {
   _id: string | number;
   __typename: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export type SubscribeMoreParam = {
   type: string;
-  value: any;
+  value: unknown;
 };
 
 export interface SubscribeMoreConfig {

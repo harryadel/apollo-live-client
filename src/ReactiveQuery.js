@@ -1,65 +1,53 @@
 import * as React from 'react';
-import * as PropTypes from 'prop-types';
+import { useEffect, useMemo } from 'react';
 import { reduceStore } from './reduceStore';
-import { Query } from 'react-apollo';
+import { useQuery, QueryResult, OperationVariables } from '@apollo/client';
+import { DocumentNode } from 'graphql';
 
-export default class ReactiveQuery extends React.Component {
-  static propTypes = {
-    children: PropTypes.func.isRequired,
-    query: PropTypes.object.isRequired,
-    subscription: PropTypes.object.isRequired,
-  };
-
-  render() {
-    const { children, subscription, query, variables, ...rest } = this.props;
-
-    return (
-      <Query query={query} variables={variables} {...rest}>
-        {props => {
-          return (
-            <Subscription
-              subscription={subscription}
-              variables={variables}
-              {...props}
-            >
-              {() => {
-                return children(props);
-              }}
-            </Subscription>
-          );
-        }}
-      </Query>
-    );
-  }
+export interface ReactiveQueryProps {
+  children: (result: QueryResult) => React.ReactNode;
+  query: DocumentNode;
+  subscription: DocumentNode;
+  variables?: OperationVariables;
+  [key: string]: any;
 }
 
-class Subscription extends React.Component {
-  componentDidMount = () => {
-    const { subscribeToMore, subscription, variables } = this.props;
+export default function ReactiveQuery({
+  children,
+  subscription,
+  query,
+  variables,
+  ...rest
+}: ReactiveQueryProps) {
+  const queryResult = useQuery(query, { variables, ...rest });
+  const { data, subscribeToMore } = queryResult;
 
-    subscribeToMore({
+  useEffect(() => {
+    if (!subscribeToMore) return;
+
+    const unsubscribe = subscribeToMore({
       document: subscription,
       variables: variables,
       updateQuery: (prev, { subscriptionData }) => {
-        if (!subscriptionData.data) return prev;
+        if (!subscriptionData?.data) return prev;
 
         const storeName = Object.keys(subscriptionData.data)[0];
+        if (!storeName) return prev;
 
-        const newStore = Object.assign({}, prev, {
+        const newStore = {
+          ...prev,
           [storeName]: reduceStore(
             subscriptionData.data[storeName],
             prev[storeName]
           ),
-        });
+        };
 
         return newStore;
       },
     });
-  };
 
-  render() {
-    const { children, ...rest } = this.props;
+    return unsubscribe;
+  }, [subscribeToMore, subscription, variables]);
 
-    return children(rest);
-  }
+  return <>{children(queryResult)}</>;
 }
